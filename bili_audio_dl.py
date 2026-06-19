@@ -58,6 +58,17 @@ def enc_wbi(params: dict, img_key: str, sub_key: str) -> dict:
     return params
 
 
+def _dm_fingerprint() -> dict:
+    """Generate DM fingerprint args to bypass Bilibili anti-scraping."""
+    chars = "ABCDEFGHIJK"
+    return {
+        "dm_img_str": "".join(random.choices(chars, k=2)),
+        "dm_cover_img_str": "".join(random.choices(chars, k=2)),
+        "dm_img_inter": '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}',
+        "dm_img_list": "[]",
+    }
+
+
 def sanitize_filename(name: str, max_len: int = 200) -> str:
     name = re.sub(r'[<>:"/\\|?*]', "_", name)
     name = re.sub(r"\s+", " ", name).strip()
@@ -315,19 +326,23 @@ class BiliClient:
         return {"code": -1, "message": "max retries exceeded"}
 
     def get_user_video_count(self, mid: int) -> int:
-        data = self._api_with_retry("/x/space/wbi/arc/search", {
+        params = {
             "mid": mid, "ps": 1, "pn": 1, "order": "pubdate",
             "keyword": "", "tid": 0, "platform": "web", "web_location": "1550101",
-        })
+        }
+        params.update(_dm_fingerprint())
+        data = self._api_with_retry("/x/space/wbi/arc/search", params)
         if data["code"] != 0:
             raise RuntimeError(f"API error {data['code']}: {data.get('message', '')}")
         return data["data"]["page"]["count"]
 
     def get_video_list_page(self, mid: int, pn: int, ps: int = 30) -> list[dict]:
-        data = self._api_with_retry("/x/space/wbi/arc/search", {
+        params = {
             "mid": mid, "ps": ps, "pn": pn, "order": "pubdate",
             "keyword": "", "tid": 0, "platform": "web", "web_location": "1550101",
-        })
+        }
+        params.update(_dm_fingerprint())
+        data = self._api_with_retry("/x/space/wbi/arc/search", params)
         if data["code"] != 0:
             return []
         return data["data"]["list"]["vlist"]
