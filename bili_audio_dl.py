@@ -59,11 +59,14 @@ def enc_wbi(params: dict, img_key: str, sub_key: str) -> dict:
 
 
 def _dm_fingerprint() -> dict:
-    """Generate DM fingerprint args to bypass Bilibili anti-scraping."""
-    chars = "ABCDEFGHIJK"
+    """Generate DM fingerprint args to bypass Bilibili anti-scraping.
+
+    Uses fixed base64-encoded strings that mimic real browser WebGL renderer info,
+    matching the approach used by downkyicore.
+    """
     return {
-        "dm_img_str": "".join(random.choices(chars, k=2)),
-        "dm_cover_img_str": "".join(random.choices(chars, k=2)),
+        "dm_img_str": "V2ViR0wgMS4wIChPcGVuR0wp",
+        "dm_cover_img_str": "QU5HTEUgKE5WSURJQSwgTlZJRElBIEdlRm9yY2UgR1RYIDk4MCBEaXJlY3QzRDExIHZzXzVfMCBwc181XzApLCBvciBzaW1pbGFy",
         "dm_img_inter": '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}',
         "dm_img_list": "[]",
     }
@@ -363,6 +366,24 @@ class BiliClient:
             return best.get("baseUrl") or best.get("base_url"), best.get("bandwidth", 0)
         return None, 0
 
+    def get_audio_url_from_webpage(self, bvid: str) -> tuple[str | None, int]:
+        """Fallback: extract audio URL from video page's __playinfo__ JSON."""
+        url = f"https://www.bilibili.com/video/{bvid}/"
+        try:
+            resp = self.opener.open(self._req(url), timeout=30)
+            html = resp.read().decode("utf-8", errors="replace")
+            m = re.search(r"<script>window\.__playinfo__=(.*?)</script>", html)
+            if not m:
+                return None, 0
+            playinfo = json.loads(m.group(1))
+            dash = playinfo.get("data", {}).get("dash")
+            if dash and dash.get("audio"):
+                best = sorted(dash["audio"], key=lambda x: x.get("bandwidth", 0), reverse=True)[0]
+                return best.get("baseUrl") or best.get("base_url"), best.get("bandwidth", 0)
+        except Exception:
+            pass
+        return None, 0
+
     def download_file(self, url: str, filepath: str) -> int:
         req = self._req(url, referer="https://www.bilibili.com")
         resp = self.opener.open(req, timeout=120)
@@ -453,6 +474,9 @@ def _resolve_one(client: BiliClient, video: dict, output_dir: str, ckpt: Checkpo
             return result
 
         audio_url, bw = client.get_audio_url(bvid, info["cid"])
+        if not audio_url:
+            # Fallback: try extracting from video page HTML
+            audio_url, bw = client.get_audio_url_from_webpage(bvid)
         if not audio_url:
             result["status"] = "no_audio"
             return result
