@@ -30,25 +30,25 @@ cd bili-audio-dl
 
 ```bash
 # Download all audio from a user
-python bili_audio_dl.py https://space.bilibili.com/2081722/video
+python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
 
 # With login cookie (much higher API limits)
-python bili_audio_dl.py 2081722 --cookie 'SESSDATA=your_sessdata_here'
+python bili_audio_dl.py USER_MID --cookie 'SESSDATA=your_sessdata_here'
 
 # More workers for faster downloads
-python bili_audio_dl.py 2081722 --workers 8
+python bili_audio_dl.py USER_MID --workers 8
 
 # Use proxy
-python bili_audio_dl.py 2081722 --proxy socks5://127.0.0.1:1080
+python bili_audio_dl.py USER_MID --proxy socks5://127.0.0.1:1080
 
 # Resume after interruption (auto-detects checkpoint)
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 
 # Only fetch video list, don't download
-python bili_audio_dl.py 2081722 --list-only
+python bili_audio_dl.py USER_MID --list-only
 
 # Read BV IDs from file
-python bili_audio_dl.py 2081722 --from-file bvids.txt
+python bili_audio_dl.py USER_MID --from-file bvids.txt
 ```
 
 ### How to Get SESSDATA Cookie
@@ -86,10 +86,10 @@ Every resolved video and completed download is saved to `.checkpoint.json`. If i
 
 ```bash
 # First run: downloads 200/360, gets blocked
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 
 # Second run: skips 200 already done, continues from #201
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 ```
 
 ### Output
@@ -141,25 +141,25 @@ cd bili-audio-dl
 
 ```bash
 # 下载某用户的全部音频
-python bili_audio_dl.py https://space.bilibili.com/2081722/video
+python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
 
 # 使用登录 Cookie（API 配额大幅提高）
-python bili_audio_dl.py 2081722 --cookie 'SESSDATA=你的sessdata'
+python bili_audio_dl.py USER_MID --cookie 'SESSDATA=你的sessdata'
 
 # 增加下载并发数
-python bili_audio_dl.py 2081722 --workers 8
+python bili_audio_dl.py USER_MID --workers 8
 
 # 使用代理
-python bili_audio_dl.py 2081722 --proxy socks5://127.0.0.1:1080
+python bili_audio_dl.py USER_MID --proxy socks5://127.0.0.1:1080
 
 # 中断后恢复（自动检测断点）
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 
 # 仅获取视频列表，不下载
-python bili_audio_dl.py 2081722 --list-only
+python bili_audio_dl.py USER_MID --list-only
 
 # 从文件读取 BV 号
-python bili_audio_dl.py 2081722 --from-file bvids.txt
+python bili_audio_dl.py USER_MID --from-file bvids.txt
 ```
 
 ### 如何获取 SESSDATA Cookie
@@ -197,10 +197,10 @@ python bili_audio_dl.py 2081722 --from-file bvids.txt
 
 ```bash
 # 第一次运行：下载了 200/360，被封控
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 
 # 第二次运行：跳过已完成的 200 个，从 #201 继续
-python bili_audio_dl.py 2081722
+python bili_audio_dl.py USER_MID
 ```
 
 ### 输出结构
