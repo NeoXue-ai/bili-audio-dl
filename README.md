@@ -28,15 +28,17 @@ cd bili-audio-dl
 
 ### Quick Start
 
-```bash
-# Download all audio from a user
-python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
+> **Recommend using SESSDATA cookie** — without it, API quota is very low and you'll get blocked frequently. With SESSDATA, downloads are **2-3x faster**. See [How to Get SESSDATA](#how-to-get-sessdata-cookie) below.
 
-# With login cookie (much higher API limits)
+```bash
+# Recommended: download with login cookie
 python bili_audio_dl.py USER_MID --cookie 'SESSDATA=your_sessdata_here'
 
+# Without cookie (slower, more likely to be blocked)
+python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
+
 # More workers for faster downloads
-python bili_audio_dl.py USER_MID --workers 8
+python bili_audio_dl.py USER_MID --cookie 'SESSDATA=xxx' --workers 8
 
 # Use proxy
 python bili_audio_dl.py USER_MID --proxy socks5://127.0.0.1:1080
@@ -139,15 +141,17 @@ cd bili-audio-dl
 
 ### 快速开始
 
-```bash
-# 下载某用户的全部音频
-python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
+> **建议配置 SESSDATA Cookie** — 不配置时 API 配额很低，容易被封控。配置后下载速度提升 **2-3 倍**。获取方式见下方 [如何获取 SESSDATA](#如何获取-sessdata-cookie)。
 
-# 使用登录 Cookie（API 配额大幅提高）
+```bash
+# 推荐：使用登录 Cookie 下载
 python bili_audio_dl.py USER_MID --cookie 'SESSDATA=你的sessdata'
 
+# 不用 Cookie（更慢，更容易被封）
+python bili_audio_dl.py https://space.bilibili.com/USER_MID/video
+
 # 增加下载并发数
-python bili_audio_dl.py USER_MID --workers 8
+python bili_audio_dl.py USER_MID --cookie 'SESSDATA=xxx' --workers 8
 
 # 使用代理
 python bili_audio_dl.py USER_MID --proxy socks5://127.0.0.1:1080
