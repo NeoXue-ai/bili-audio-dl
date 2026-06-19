@@ -4,12 +4,13 @@ Batch download audio from Bilibili (B站) user space. Pure Python 3.10+, zero de
 
 ## Features
 
-- **Concurrent downloads** — parallel workers for fast throughput
-- **Two-phase pipeline** — API resolution (rate-limited) + CDN download (parallel)
-- **Token-bucket rate limiter** — respects Bilibili's API limits without unnecessary waits
-- **WBI signature** — automatic anti-scraping bypass
-- **Session rotation** — auto-recovery from 412/352 rate-limit errors
-- **Resume support** — skips already downloaded files
+- **Concurrent downloads** — parallel CDN downloads with thread pool
+- **Checkpoint/resume** — survives blocks and restarts; just run the same command again
+- **Cookie auth** — `--cookie SESSDATA=xxx` for much higher API quotas
+- **Exponential backoff** — auto-backs off on rate-limit (412/352), doesn't blindly retry
+- **Adaptive cooldown** — repeated blocks trigger longer waits and session rotation
+- **Proxy support** — `--proxy socks5://127.0.0.1:1080` to distribute requests
+- **Zero dependencies** — only Python standard library
 
 ## Install
 
@@ -18,48 +19,68 @@ git clone https://github.com/NeoXue-ai/bili-audio-dl.git
 cd bili-audio-dl
 ```
 
-No `pip install` needed.
-
 ## Usage
 
 ```bash
-# Download all audio from a user's space
+# Basic: download all audio from a user
 python bili_audio_dl.py https://space.bilibili.com/2081722/video
 
-# Using numeric mid
+# With login cookie (much higher API limits)
+python bili_audio_dl.py 2081722 --cookie 'SESSDATA=your_sessdata_here'
+
+# More workers for faster downloads
+python bili_audio_dl.py 2081722 --workers 8
+
+# Use proxy
+python bili_audio_dl.py 2081722 --proxy socks5://127.0.0.1:1080
+
+# Resume after interruption (auto-detects checkpoint)
 python bili_audio_dl.py 2081722
 
-# Custom output directory + more workers
-python bili_audio_dl.py 2081722 -o ./my_audio --workers 8
-
-# Only fetch video list (no download)
+# Only fetch video list
 python bili_audio_dl.py 2081722 --list-only
 
-# Download from a pre-existing BV list file
+# Read BV IDs from file
 python bili_audio_dl.py 2081722 --from-file bvids.txt
 ```
 
+## How to Get SESSDATA Cookie
+
+1. Open Bilibili in your browser and log in
+2. Open DevTools (F12) → Application → Cookies → `https://www.bilibili.com`
+3. Copy the `SESSDATA` value
+4. Use: `--cookie 'SESSDATA=abc123...'`
+
+With SESSDATA, the API quota is significantly higher and you're much less likely to get blocked.
+
 ## How It Works
 
-**Phase 1 — Resolve** (API-bound, rate-limited):
-- For each video: call `get_video_info` + `get_audio_url` to get the CDN download link
-- Token-bucket rate limiter caps API calls at ~2/sec with burst of 3
-- Auto-retry with session rotation on 412/352 errors
+### Phase 1 — Resolve (API-bound, rate-limited)
 
-**Phase 2 — Download** (CDN-bound, parallel):
-- Download audio files from Bilibili CDN using a thread pool
-- CDN endpoints are not rate-limited like the API, so parallel workers help significantly
-- Default 4 workers, configurable via `--workers`
+For each video, calls the Bilibili API to get video info and audio stream URL:
+- Token-bucket rate limiter caps API calls at ~2/sec
+- Exponential backoff on rate-limit errors: 4s → 8s → 16s → 32s → 60s (max)
+- After 3 consecutive blocks: auto-rotates session (new buvid + WBI keys)
+- Resolved info is cached in `.checkpoint.json`
 
-## Performance
+### Phase 2 — Download (CDN-bound, parallel)
 
-| Mode | 360 videos (~7GB) |
-|------|-------------------|
-| v1 (sequential, fixed delay) | ~3.5 hours |
-| v2 (concurrent, 4 workers) | ~40 min |
-| v2 (concurrent, 8 workers) | ~25 min |
+Downloads audio files from Bilibili CDN using a thread pool:
+- CDN endpoints are not rate-limited like the API
+- Default 4 workers, use `--workers 8` for faster downloads
+- Completed downloads are checkpointed immediately
 
-Actual speed depends on your network and Bilibili's rate limiting.
+### Checkpoint/Resume
+
+Every resolved video and completed download is saved to `.checkpoint.json`. If the process is interrupted (Ctrl+C, network error, rate-limit block), just run the same command again:
+
+```bash
+# First run: downloads 200/360, gets blocked
+python bili_audio_dl.py 2081722
+
+# Second run: skips 200 already done, continues from #201
+python bili_audio_dl.py 2081722
+```
 
 ## Output Structure
 
@@ -68,8 +89,9 @@ bilibili_audio/
 ├── Video Title 1.m4a
 ├── Video Title 2.m4a
 ├── ...
-├── bvids.txt          # All BV IDs
-└── failed.txt         # Failed downloads (if any)
+├── bvids.txt           # All BV IDs
+├── failed.txt          # Failed downloads (if any)
+└── .checkpoint.json    # Resume checkpoint (auto-managed)
 ```
 
 ## Requirements
