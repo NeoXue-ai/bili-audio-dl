@@ -217,7 +217,7 @@ class BiliClient:
             self._parse_cookie(cookie)
 
         # Build opener with optional proxy
-        handlers = [http.cookiejar.CookieJar()]
+        handlers = [urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())]
         if proxy:
             proxy_handler = urllib.request.ProxyHandler({
                 "http": proxy,
@@ -562,6 +562,7 @@ def download_audio_batch(
     failed = 0
     failed_bvids = []
     done = skipped
+    total_bytes = 0
     start_time = time.monotonic()
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -574,12 +575,14 @@ def download_audio_batch(
             if result["status"] == "done":
                 success += 1
                 size_mb = result["size"] / 1024 / 1024
+                total_bytes += result["size"]
                 elapsed = time.monotonic() - start_time
-                speed = (done - skipped) / elapsed if elapsed > 0 else 0
-                eta = (len(resolved) - (done - skipped)) / speed if speed > 0 else 0
+                files_speed = (done - skipped) / elapsed if elapsed > 0 else 0
+                bw_speed = total_bytes / 1024 / 1024 / elapsed if elapsed > 0 else 0
+                eta = (len(resolved) - (done - skipped)) / files_speed if files_speed > 0 else 0
                 sys.stdout.write(
-                    f"\r  [{done}/{total}] {result['title'][:40]:<40s} ({size_mb:.1f}MB) "
-                    f"| {speed:.1f}/s | ETA {eta:.0f}s"
+                    f"\r  [{done}/{total}] {result['title'][:35]:<35s} ({size_mb:.1f}MB) "
+                    f"| {bw_speed:.1f}MB/s | {files_speed:.1f}f/s | ETA {eta:.0f}s"
                 )
                 sys.stdout.flush()
             else:
@@ -589,7 +592,7 @@ def download_audio_batch(
 
     elapsed = time.monotonic() - start_time
     print(f"\n  Download phase: {elapsed:.0f}s ({success} files, "
-          f"{success / elapsed:.1f} files/s)")
+          f"{total_bytes / 1024 / 1024:.1f}MB, {total_bytes / 1024 / 1024 / elapsed:.1f}MB/s)")
 
     return skipped + success, failed + failed_resolve, failed_bvids
 
