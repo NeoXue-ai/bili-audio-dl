@@ -1,19 +1,20 @@
 # bili-audio-dl
 
-Batch download audio from Bilibili (B站) user space. No external dependencies — pure Python 3.10+.
+Batch download audio from Bilibili (B站) user space. Pure Python 3.10+, zero dependencies.
 
 ## Features
 
-- Fetch all video BV IDs from any public Bilibili user space
-- Download audio streams (m4a) with highest available quality
-- Auto retry with rate-limit handling (WBI signature + session rotation)
-- Resume support — skips already downloaded files
-- Zero dependencies — only uses Python standard library
+- **Concurrent downloads** — parallel workers for fast throughput
+- **Two-phase pipeline** — API resolution (rate-limited) + CDN download (parallel)
+- **Token-bucket rate limiter** — respects Bilibili's API limits without unnecessary waits
+- **WBI signature** — automatic anti-scraping bypass
+- **Session rotation** — auto-recovery from 412/352 rate-limit errors
+- **Resume support** — skips already downloaded files
 
 ## Install
 
 ```bash
-git clone https://github.com/lonnie/bili-audio-dl.git
+git clone https://github.com/NeoXue-ai/bili-audio-dl.git
 cd bili-audio-dl
 ```
 
@@ -28,32 +29,37 @@ python bili_audio_dl.py https://space.bilibili.com/2081722/video
 # Using numeric mid
 python bili_audio_dl.py 2081722
 
-# Custom output directory
-python bili_audio_dl.py 2081722 -o ./my_audio
+# Custom output directory + more workers
+python bili_audio_dl.py 2081722 -o ./my_audio --workers 8
 
 # Only fetch video list (no download)
 python bili_audio_dl.py 2081722 --list-only
 
 # Download from a pre-existing BV list file
 python bili_audio_dl.py 2081722 --from-file bvids.txt
-
-# Adjust delay between requests (seconds)
-python bili_audio_dl.py 2081722 --delay 3
 ```
 
 ## How It Works
 
-1. **Session init** — Gets `buvid3`/`buvid4` device fingerprint cookies and WBI signature keys from Bilibili API
-2. **Fetch video list** — Calls `/x/space/wbi/arc/search` with WBI-signed requests, rotating sessions on rate-limit (412/352)
-3. **Download audio** — For each video, gets the DASH audio stream URL via `/x/player/wbi/playurl` and downloads the m4a file
+**Phase 1 — Resolve** (API-bound, rate-limited):
+- For each video: call `get_video_info` + `get_audio_url` to get the CDN download link
+- Token-bucket rate limiter caps API calls at ~2/sec with burst of 3
+- Auto-retry with session rotation on 412/352 errors
 
-## Rate Limiting
+**Phase 2 — Download** (CDN-bound, parallel):
+- Download audio files from Bilibili CDN using a thread pool
+- CDN endpoints are not rate-limited like the API, so parallel workers help significantly
+- Default 4 workers, configurable via `--workers`
 
-Bilibili has aggressive anti-scraping. If you hit rate limits:
+## Performance
 
-- Increase `--delay` (e.g. `--delay 3`)
-- The tool auto-retries with fresh sessions, but heavy scraping may still get blocked
-- Consider running during off-peak hours (late night CN time)
+| Mode | 360 videos (~7GB) |
+|------|-------------------|
+| v1 (sequential, fixed delay) | ~3.5 hours |
+| v2 (concurrent, 4 workers) | ~40 min |
+| v2 (concurrent, 8 workers) | ~25 min |
+
+Actual speed depends on your network and Bilibili's rate limiting.
 
 ## Output Structure
 
