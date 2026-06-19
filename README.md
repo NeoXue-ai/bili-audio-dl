@@ -58,6 +58,8 @@ With SESSDATA, the API quota is significantly higher and you're much less likely
 ### Phase 1 — Resolve (API-bound, rate-limited)
 
 For each video, calls the Bilibili API to get video info and audio stream URL:
+- WBI signature on all API requests
+- DM fingerprint args (`dm_img_str`, `dm_cover_img_str`, etc.) to bypass newer anti-scraping
 - Token-bucket rate limiter caps API calls at ~2/sec
 - Exponential backoff on rate-limit errors: 4s → 8s → 16s → 32s → 60s (max)
 - After 3 consecutive blocks: auto-rotates session (new buvid + WBI keys)
